@@ -1,0 +1,128 @@
+<br/>
+<p align="center">
+  <h3 align="center">The Resistance: Coup</h3>
+
+  <p align="center">
+    A text-based version of the popular party game!
+    <br/>
+    <br/>
+    <a href="https://github.com/dirkbrnd/resistance_coup/issues">Request Feature</a>
+  </p>
+</p>
+
+![Downloads](https://img.shields.io/github/downloads/dirkbrnd/resistance_coup/total) ![Contributors](https://img.shields.io/github/contributors/dirkbrnd/resistance_coup?color=dark-green) ![Issues](https://img.shields.io/github/issues/dirkbrnd/resistance_coup) ![License](https://img.shields.io/github/license/dirkbrnd/resistance_coup) 
+
+## About The Project
+<p align="center">
+    <img src="assets/coup_game.png" alt="Coup Game" width="300"/>
+</p>
+
+
+This is a terminal text-based version of [The Resistance: Coup](https://www.ultraboardgames.com/coup/game-rules.php#google_vignette). I suggest you make yourself familiar with the rules before playing!
+
+In a nutshell:
+
+* You have some character cards representing government officials you have influence over.
+* You can perform actions to sabotage other players and reduce their influence (i.e. remove their cards)
+* The last person with any cards left is the winner!
+
+The main package to mention here is [Rich](https://github.com/Textualize/rich). It was instrumental in making it as pretty as possible on the terminal!
+
+## Getting Started
+
+### Prerequisites
+
+* This project is built on Python 3.11.
+* The packages are maintained with [poetry](https://github.com/python-poetry/poetry).
+
+### Steps to get playing
+
+1. Clone the repo
+
+```sh
+git clone https://github.com/dirkbrnd/resistance_coup.git
+```
+
+2. Install the game
+
+```sh
+poetry install
+```
+
+3. Launch!
+
+```sh
+python coup.py
+```
+
+## Usage
+
+![Screen Shot](assets/game_state.png)
+
+* When the game starts it will ask your name.
+* You will play against 4 other AI players.
+* The game will continue until there is a winner (or if you lose you can force a restart...)
+* You can play again after winning/losing.
+
+## Roadmap
+
+See the [open issues](https://github.com/dirkbrnd/resistance_coup/issues) for a list of proposed features (and known issues).
+
+## Contributing
+
+Contributions are what make the open source community such an amazing place to be learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+* If you have suggestions for adding or removing projects, feel free to [open an issue](https://github.com/dirkbrnd/resistance_coup/issues/new) to discuss it, or directly create a pull request.
+* Please make sure you check your spelling and grammar.
+* Create individual PR for each suggestion.
+
+### Local setup for development
+After you have cloned the repo:
+
+1. Install the game
+
+```sh
+poetry install
+```
+
+2. Set up the pre-commit hooks
+
+```sh
+pre-commit install
+```
+
+3. Make your changes on a branch and create a PR!
+
+
+### Creating A Pull Request
+
+1. Clone the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+
+### Features I want
+
+Agent features:
+1. Faulty human memory (importance of memory relies on emotional impact from turn) -> Agentic memory, recency, importance & relevance
+2. Bluffing patterns (rather than random) -> Personality
+3. Reasoning about everything -> Chain of thought 
+4. Inner thoughts and strategy (emotional state + overall strategy) -> Derived from chain of thought (updates this)
+5. Reacting to decisions -> updates emotional state + overall strategy
+6. Responses can be in a script format from each player
+7. Interrupt an action
+
+Game loop logic:
+1. Giving agents the ability to think & speak before every turn/challenge etc.. (obviously they shouldnt speak too much)
+
+
+
+## License
+
+Distributed under the MIT License. See [LICENSE](https://github.com/dirkbrnd/Resistance Coup/blob/main/LICENSE.md) for more information.
+
+## Acknowledgements
+
+* [Aaron Yuan](https://www.linkedin.com/in/aaron-yuan-776312a5/) for the inspiration!
+
