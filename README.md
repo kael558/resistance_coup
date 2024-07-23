@@ -111,7 +111,7 @@ Agent features:
 4. Inner thoughts and strategy (emotional state + overall strategy) -> Derived from chain of thought (updates this)
 5. Reacting to decisions -> updates emotional state + overall strategy
 6. Responses can be in a script format from each player
-7. Interrupt an action
+7. Interrupt an action ;o
 
 Game loop logic:
 1. Giving agents the ability to think & speak before every turn/challenge etc.. (obviously they shouldnt speak too much)

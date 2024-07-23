@@ -8,15 +8,13 @@ from src.models.card import Card
 from src.models.players.base import BasePlayer
 from src.utils.print import print_text, print_texts
 
-from src.models.memory import Memory
 import openai
 
 
 class AgentPlayer(BasePlayer):
     is_ai: bool = True
     personality: str
-    memory: Memory
-    inner_thoughts: str
+    inner_thoughts: str = ""
 
     def _system_msg(self, overall_task: str, possible_actions: List[Action], possible_players: List[BasePlayer], task: str) -> str:
         possible_actions_str = [str(action.action_type.value) for action in possible_actions]
@@ -47,11 +45,13 @@ Your task is to decide the following:
     def _alter_thoughts(self, messages: List) -> str:
         # Make a call to the llm to alter the inner thoughts based on the new thoughts, action and player
         task = f"""You have now thought about the current state of the game and your overall strategy.
-        
-Alter your inner thoughts based on the new thoughts, action and player. Output your thoughts in a clear and concise manner.
+
+Adjust and add your new thought to your inner thoughts. Output your thoughts in a clear and concise manner.
 
 Inner thoughts:
-{self.inner_thoughts}"""
+{self.inner_thoughts}
+
+Adjusted & new inner thoughts:"""
 
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
@@ -246,14 +246,30 @@ Think step by step about how you can achieve this goal. Output your thoughts in 
         """
         Make changes to internal thoughts + output something you want to say (could be nothing)
         """
-        system_msg = f"""You are {self.name}.
+        if is_current_player:
+            system_msg = f"""You are {self.name}.
+    
+You are playing a game of Coup and are trying to win.
 
-You are playing a game of Coup.
-
-{"You just made the following move:" if is_current_player else "The following event just happened:"}
+You just made the following move:
 {event}
 
-{"Why did you make this move?" if is_current_player else "What is your reaction & thoughts on this event and what might you say to the other players?"}"""
+Here are your inner thoughts:
+{self.inner_thoughts}
+
+Why did you make this move?"""
+        else:
+            system_msg = f"""You are {self.name}.
+    
+You are playing a game of Coup and are trying to win.
+
+The following event just happened:
+{event}
+
+Here are your inner thoughts:
+{self.inner_thoughts}
+
+What is your reaction & thoughts on this event and what might you say to influence the other players?"""
 
         event_thoughts = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
