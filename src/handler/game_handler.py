@@ -6,6 +6,7 @@ import names
 
 from src.models.action import Action, ActionType, CounterAction, get_counter_action
 from src.models.card import Card, build_deck
+from src.models.players.agent import AgentPlayer
 from src.models.players.ai import AIPlayer
 from src.models.players.base import BasePlayer
 from src.models.players.human import HumanPlayer
@@ -19,6 +20,8 @@ from src.utils.print import (
     print_text,
     print_texts,
 )
+
+import openai
 
 
 class ChallengeResult(Enum):
@@ -269,11 +272,69 @@ class ResistanceCoupGameHandler:
                 self._deck.append(first_card)
                 self._deck.append(second_card)
 
+    def _generate_conversation(self, evt: str, player_thoughts: list[str]):
+        player_specs = [f"""---{player.name}--- 
+Personality: {player.personality}
+Inner thoughts: {thought}""" for player, thought in zip(self._players, player_thoughts)]
+
+        player_specs = "\n".join(player_thoughts)
+
+        system_msg = f"""You will generate a conversation about a group of players playing the board game Coup.
+
+The conversation should be in a script format.
+
+Here is what just happened:
+{evt}
+
+Here is each players' personality & inner thoughts on the event:
+{player_specs}
+
+Depending on the personality and inner thoughts of each player, they may lie, bluff, or tell the truth, or try to influence the other players.
+Write the conversation below:
+"""
+        conversation = openai.Completion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_msg}
+            ]
+        )
+
+        return conversation.choices[0].message.content
+
+
+    def send_event_to_players(self, event: str):
+        """
+        1. Send the action to all players to react
+        2. Retrieve their input
+        3. Construct a conversation
+        4. Adjust all players internal thoughts based on conversation
+        """
+
+        # Send the event to all players to react
+        player_thoughts = []
+        for player in self._players:
+            player_thought = player.react_to_action(event, is_current_player=player == self.current_player)
+            player_thoughts.append(player_thought)
+
+        # Construct a conversation
+        conversation = self._generate_conversation(event, player_thoughts)
+
+        # Adjust all players internal thoughts based on conversation following event
+        for player, player_thought in zip(self._players, player_thoughts):
+            player.adjust_internal_thoughts(event, conversation)
+
+
     def handle_turn(self) -> bool:
         players_without_current = self._players_without_player(self.current_player)
 
         # Choose an action to perform
         target_action, target_player = self._action_phase(players_without_current)
+
+        if target_player:
+            evt = "Player {} performed action {} on player {}".format(self.current_player, target_action, target_player)
+        else:
+            evt = "Player {} performed action {}".format(self.current_player, target_action)
+        self.send_event_to_players(evt)
 
         # Opportunity to challenge action
         challenge_result = ChallengeResult.no_challenge
@@ -286,13 +347,20 @@ class ResistanceCoupGameHandler:
 
         if challenge_result == ChallengeResult.challenge_succeeded:
             # Challenge succeeded and the action does not take place
-            pass
+            evt = "Player {} successfully challenged player {}'s action {}".format(self.current_player, target_player, target_action)
+            self.send_event_to_players(evt)
         elif challenge_result == ChallengeResult.challenge_failed:
+            evt = "Player {} failed to challenge player {}'s action {}".format(self.current_player, target_player, target_action)
+            self.send_event_to_players(evt)
             # Challenge failed and the action is still resolved
             self._execute_action(target_action, target_player)
         elif challenge_result == ChallengeResult.no_challenge:
+
+
             # Action can't be countered
             if not target_action.can_be_countered:
+                evt = "Player {} did not challenge player {}'s action {} and the action cannot be countered".format(self.current_player, target_player, target_action)
+                self.send_event_to_players(evt)
                 self._execute_action(target_action, target_player)
 
             # Opportunity to counter
@@ -318,9 +386,16 @@ class ResistanceCoupGameHandler:
                     ChallengeResult.no_challenge,
                     ChallengeResult.challenge_failed,
                 ]:
+                    evt = "Player {} countered player {}'s action {} with counter {}".format(self.current_player, target_player, target_action, counter)
+                    self.send_event_to_players(evt)
+
+
                     self._execute_action(target_action, target_player, countered=True)
                 # No counter occurred
                 else:
+                    evt = "Player {} did not counter player {}'s action {}".format(self.current_player, target_player, target_action)
+                    self.send_event_to_players(evt)
+
                     self._execute_action(target_action, target_player)
 
         # Is any player out of the game?

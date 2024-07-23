@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from src.models.card import CardType
 
 
+
 class ActionType(str, Enum):
     income = "Income"
     foreign_aid = "Foreign Aid"

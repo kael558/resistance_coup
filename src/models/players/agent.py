@@ -22,7 +22,7 @@ class AgentPlayer(BasePlayer):
         possible_actions_str = [str(action.action_type.value) for action in possible_actions]
         possible_players_str = [(str(player.name) + " has " + str(len(player.cards)) + " cards.") for player in possible_players]
 
-        system_msg = f"""You are a player in the board game 'Coup'. You have the following personality:
+        system_msg = f"""You are a player in the board game 'Coup'. Your name is {self.name} and you have the following personality:
 {self.personality}
 
 You have the following inner thoughts and overall strategy:
@@ -241,6 +241,57 @@ Think step by step about how you can achieve this goal. Output your thoughts in 
 
             if self._validate_action(target_action, target_player):
                 return target_action, target_player
+
+    def react_to_action(self, event: str, is_current_player: bool) -> str:
+        """
+        Make changes to internal thoughts + output something you want to say (could be nothing)
+        """
+        system_msg = f"""You are {self.name}.
+
+You are playing a game of Coup.
+
+{"You just made the following move:" if is_current_player else "The following event just happened:"}
+{event}
+
+{"Why did you make this move?" if is_current_player else "What is your reaction & thoughts on this event and what might you say to the other players?"}"""
+
+        event_thoughts = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_msg}
+            ]
+        )
+
+        return event_thoughts.choices[0].message.content
+
+    def adjust_internal_thoughts(self, event: str, is_current_player:bool, conversation: str) -> None:
+        """
+        Adjust internal thoughts based on the event and conversation that just happened
+        """
+        system_msg = f"""You are {self.name}.
+        
+You are playing a game of Coup.
+
+{"You just made the following move:" if is_current_player else "The following event just happened:"}
+{event}
+
+After the event, the following conversation took place:
+{conversation}
+
+Here are your current inner thoughts:
+{self.inner_thoughts}
+
+Adjust your inner thoughts based on the event and conversation. Output your thoughts in a clear and concise manner."""
+
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": system_msg}
+            ]
+        )
+
+        self.inner_thoughts = response.choices[0].message.content
+
 
     def determine_challenge(self, player: BasePlayer) -> bool:
         """Choose whether to challenge the current player"""
