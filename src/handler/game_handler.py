@@ -11,6 +11,7 @@ from src.models.players.base import BasePlayer
 from src.models.players.human import HumanPlayer
 from src.models.players.agent import AgentPlayer
 from src.utils.game_state import generate_players_table, generate_state_panel, generate_player_panel, generate_str_panel
+from src.utils.helpers import generate_personality
 from src.utils.print import (
     build_action_report_string,
     build_counter_report_string,
@@ -18,7 +19,7 @@ from src.utils.print import (
     print_panel,
     print_table,
     print_text,
-    print_texts,
+    print_texts, print_panel_with_title,
 )
 
 from src.utils.api_interface import client
@@ -39,6 +40,7 @@ class ResistanceCoupGameHandler:
 
     def __init__(self, number_of_players: int):
 
+        self.turn_count = None
         self._number_of_players = number_of_players
         unique_names = set()
         for i in range(number_of_players):
@@ -50,7 +52,8 @@ class ResistanceCoupGameHandler:
 
             unique_names.add(ai_name)
 
-            personality = names.generate_personality(ai_name, gender)
+            personality = generate_personality(ai_name, gender)
+            print_text(f"Initialized Player {i + 1}/{number_of_players}: {ai_name}")
 
             self._players.append(AgentPlayer(name=ai_name, personality=personality))
 
@@ -187,7 +190,7 @@ class ResistanceCoupGameHandler:
     ) -> ChallengeResult:
         # Every player can choose to challenge
         for challenger in other_players:
-            should_challenge = challenger.determine_challenge(player_being_challenged, action_being_challenged)
+            should_challenge = challenger.determine_challenge(player_being_challenged, action_being_challenged, turn_count=self.turn_count)
             if should_challenge:
                 if challenger.is_ai:
                     print_text(f"{challenger} is challenging {player_being_challenged}!")
@@ -284,37 +287,41 @@ class ResistanceCoupGameHandler:
                 self._deck.append(second_card)
 
     def _generate_conversation(self, evt: str, player_thoughts: list[str]):
-        print_text(f"Event just happened: {evt}")
+        #print_text(f"Event just happened: {evt}")
 
         player_specs = [f"""---{player.name}--- 
 Personality: {player.personality}
+Card count: {len(player.cards)}
 Inner thoughts: {thought}""" for player, thought in zip(self._players, player_thoughts)]
 
         player_specs = "\n".join(player_specs)
 
-        system_msg = f"""You will generate a realistic conversation about the following group of players playing the board game Coup.
+        system_msg = f"""You will generate a realistic conversation about the following group of players playing the board game Coup. It is currently turn {self.turn_count}.
 
 The conversation should be in a script format.
 
 Here is what just happened:
 {evt}
 
-Here is each players' personality & inner thoughts on the event:
+Here is each players' personality, current card count & inner thoughts on the event:
 {player_specs}
 
 Depending on the personality and inner thoughts of each player, they may lie, bluff, or tell the truth, or try to influence the other players.
 
-The conversation should only be between the current players and should not proceed to any actions.
+The conversation should only be between the current players and should not proceed to any actions. 
 
-The purpose of the conversation is for players to convey their thoughts, desires to other players (to influence and convince them). But it is not a requirement that everyone has to speak.
+The content of the conversation should primarily be about the event that just happened and the players' inner thoughts.
+
+The purpose of the conversation is for players to convey their inner thoughts to other players (to influence/convince/collaborate/manipulate). But it is not a requirement that everyone has to speak.
 DO NOT PLAY THE ACTUAL GAME, JUST THE CONVERSATION PART.
 
 Write the conversation below:"""
         conversation = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_msg}
-            ]
+            ],
+            temperature=0.1
         )
 
         return conversation.choices[0].message.content
@@ -336,13 +343,14 @@ Write the conversation below:"""
         # Construct a conversation
         conversation = self._generate_conversation(event, player_thoughts)
 
-        print_panel(generate_str_panel(conversation), justify="left")
+        print_panel_with_title("Conversation", conversation, justify="left")
 
         # Adjust all players internal thoughts based on conversation following event
         for player, player_thought in zip(self._players, player_thoughts):
             player.adjust_internal_thoughts(event, is_current_player=player == self.current_player, conversation=conversation)
 
-    def handle_turn(self) -> bool:
+    def handle_turn(self, turn_count: int) -> bool:
+        self.turn_count = turn_count
         players_without_current = self._players_without_player(self.current_player)
 
         # Choose an action to perform
@@ -373,8 +381,6 @@ Write the conversation below:"""
 
             # Action can't be countered
             if not target_action.can_be_countered:
-                #evt = "Player {} did not challenge player {}'s action {} and the action cannot be countered".format(self.current_player, target_player, target_action)
-                #self.send_event_to_players(evt)
                 self._execute_action(target_action, target_player)
 
             # Opportunity to counter

@@ -86,7 +86,7 @@ def main():
                     break
 
 
-            end_state = handler.handle_turn()
+            end_state = handler.handle_turn(turn_count)
 
         console.print()
         game_ready = print_confirm("Want to play again?")

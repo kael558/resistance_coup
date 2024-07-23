@@ -7,7 +7,7 @@ from src.models.action import Action, ActionType, ChallengeAction, NoChallengeAc
 from src.models.card import Card
 from src.models.players.base import BasePlayer
 
-from src.utils.print import print_text, print_texts, print_panel
+from src.utils.print import print_text, print_texts, print_panel, print_panel_with_title
 from src.utils.api_interface import client
 
 
@@ -15,6 +15,7 @@ class AgentPlayer(BasePlayer):
     is_ai: bool = True
     personality: str
     inner_thoughts: str = ""
+
 
     def _system_msg(self, overall_task: str, possible_actions: List[Action], possible_players: List[BasePlayer], task: str) -> str:
         possible_actions_str = [str(action.action_type.value) for action in possible_actions]
@@ -29,13 +30,13 @@ You have the following inner thoughts and overall strategy:
 Your overall task is to decide the following:
 {overall_task}
 
-Here are the possible actions:
+Here are your possible actions:
 {possible_actions_str}
 
-Here are YOUR cards:
+Here are your cards:
 {[card.card_type.value for card in self.cards]}
 
-Here are the possible players that you can act on:
+Here are the players and their card counts:
 {possible_players_str}
 
 Some actions do not require choosing a player.
@@ -57,7 +58,7 @@ Inner thoughts:
 Adjusted & new inner thoughts:"""
 
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=messages
         )
 
@@ -167,7 +168,7 @@ Here is the JSON schema, please fill in the required fields:
 
         for i in range(3):
             response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o",
                 messages=messages,
                 response_format={"type": "json_object"}
             )
@@ -250,13 +251,13 @@ Weigh the risks and benefits and think about what you think is the best course o
         ]
 
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=messages
         )
         new_thought = response.choices[0].message.content.strip()
 
         #self.inner_thoughts = self._alter_thoughts(new_thought)
-        print_panel(f"{self.name} is thinking the following: {new_thought}")
+        print_panel_with_title(f"{self.name} is thinking the following:", new_thought, justify="left")
 
         messages.append({"role": "assistant", "content": new_thought})
 
@@ -323,7 +324,7 @@ Here are your inner thoughts:
 What is your reaction & thoughts on this event and what might you say to influence the other players?"""
 
         event_thoughts = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_msg}
             ]
@@ -351,7 +352,7 @@ Here are your current inner thoughts:
 Adjust your inner thoughts based on the event and conversation. Output your thoughts in a clear and concise manner."""
 
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
                 {"role": "system", "content": system_msg}
             ]
@@ -361,7 +362,7 @@ Adjust your inner thoughts based on the event and conversation. Output your thou
 
     def determine_challenge(self, player: BasePlayer, action: Action) -> bool:
         """Choose whether to challenge the current player"""
-        task = f"Do you want to challenge {str(player)} on their attempt to {action.action_type.value}? Keep in mind you also have the option to counter."
+        task = f"Do you want to challenge {str(player)} on their attempt to {action.action_type.value}? Keep in mind you also have the option to counter (or bluff a counter) if you don't challenge right now."
         messages = self.add_new_thought_to_messages(task, [ChallengeAction(), NoChallengeAction()], [player])
         challenge = self.make_decision(task, [ChallengeAction(), NoChallengeAction()], [player], messages, "challenge")
 

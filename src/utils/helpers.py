@@ -1,21 +1,20 @@
-def cosine_similarity(a, b):
-    dot_product = sum([a[i] * b[i] for i in range(len(a))])
+from src.utils.api_interface import client
 
-    magnitude_a = sum([a[i] ** 2 for i in range(len(a))]) ** 0.5
+def generate_personality(name: str, gender: str):
+    system_msg = f"""Generate a personality for a {gender} named {name}. 
+They are playing the board game Coup, so you can include elements that will make them interesting players. 
 
-    magnitude_b = sum([b[i] ** 2 for i in range(len(b))]) ** 0.5
+You can be creative with personalities, ranging from a calm, strategic to a loud, aggressive player.
 
-    return dot_product / (magnitude_a * magnitude_b)
+You may even include various emotional tendencies...
 
+Just generate the personality. Don't say anything else like 'Sure, here is a personality'."""
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "system", "content": system_msg},
+        ],
+        temperature=1.0
+    )
 
-def min_max_normalize(data):
-    if not data:
-        return []
-
-    min_value = min(data)
-    max_value = max(data)
-
-    if min_value == max_value:
-        return [0.5] * len(data)
-    else:
-        return [(value - min_value) / (max_value - min_value) for value in data]
+    return response.choices[0].message.content

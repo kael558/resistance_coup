@@ -64,6 +64,13 @@ def print_table(table: Table, justify: JustifyMethod = "center"):
     console.print(table, justify=justify)
 
 
+def print_panel_with_title(title: str, content: str, justify: JustifyMethod = "center"):
+    print_blank()
+
+    panel = Panel(content, title=title)
+    console.print(panel, justify=justify)
+
+
 def print_panel(panel: Panel or str, justify: JustifyMethod = "center"):
     print_blank()
 
@@ -88,7 +95,7 @@ def print_confirm(content: str) -> bool:
 
 
 def build_action_report_string(
-    player: BasePlayer, action: Action, target_player: BasePlayer
+        player: BasePlayer, action: Action, target_player: BasePlayer
 ) -> str:
     action_report_string = f"[bold magenta]{player}[/] chose to "
     match action.action_type:
@@ -113,7 +120,7 @@ def build_action_report_string(
 
 
 def build_counter_report_string(
-    target_player: BasePlayer, counter: CounterAction, countering_player: BasePlayer
+        target_player: BasePlayer, counter: CounterAction, countering_player: BasePlayer
 ) -> str:
     counter_report_string = f"{countering_player} chose to "
     match counter.counter_type:
