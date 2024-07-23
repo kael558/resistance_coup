@@ -14,6 +14,12 @@ class ActionType(str, Enum):
     assassinate = "Assassinate"
     steal = "Steal"
     exchange = "Exchange"
+    challenge = "Challenge"
+    no_challenge = "No Challenge"
+    counter = "Counter"
+    no_counter = "No Counter"
+    remove_card = "Remove Card"
+    exchange_cards = "Exchange Cards"
 
 
 class CounterActionType(str, Enum):
@@ -75,13 +81,45 @@ class ExchangeAction(Action):
     can_be_challenged: bool = True
 
 
-class CounterAction(BaseModel):
+class CounterAction(Action):
+    action_type = ActionType.counter
     counter_type: CounterActionType
     associated_card_type: Optional[List[CardType]]
 
     def __str__(self):
         return f"{self.counter_type.value}"
 
+class NoCounterAction(Action):
+    action_type = ActionType.no_counter
+    counter_type: CounterActionType
+    associated_card_type: Optional[List[CardType]]
+
+    def __str__(self):
+        return f"{self.counter_type.value}"
+class ChallengeAction(Action):
+    action_type: ActionType = ActionType.challenge
+
+    def __str__(self):
+        return f"{self.action_type.value}"
+
+class NoChallengeAction(Action):
+    action_type: ActionType = ActionType.no_challenge
+
+    def __str__(self):
+        return f"{self.action_type.value}"
+
+class RemoveCardAction(Action):
+    action_type: ActionType = ActionType.remove_card
+    card: CardType = None
+
+    def __str__(self):
+        return f"{self.action_type.value}"
+
+class ExchangeCardsAction(Action):
+    action_type: ActionType = ActionType.exchange_cards
+
+    def __str__(self):
+        return f"{self.action_type.value}"
 
 class BlockForeignAidCounterAction(CounterAction):
     counter_type: CounterActionType = CounterActionType.block_foreign_aid
