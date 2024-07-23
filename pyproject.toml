@@ -11,12 +11,7 @@ python = "^3.11"
 pydantic = "^2.5.2"
 names = "^0.3.0"
 rich = "^13.7.0"
-annoy = "^1.17.3"
 openai = "^1.37.0"
-langchain = "^0.2.10"
-langchain-community = "^0.2.9"
-langchain-openai = "^0.1.17"
-faiss-cpu = "^1.8.0.post1"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^3.3.2"
@@ -25,6 +20,9 @@ flake8 = "^3.9.1"
 pytest = "^6.2.4"
 pytest-asyncio = "^0.15.0"
 black = "^22.6.0"
+
+[tool.poetry.plugins.dotenv]
+location = ".env"
 
 
 [tool.black]

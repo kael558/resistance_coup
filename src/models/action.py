@@ -83,7 +83,7 @@ class ExchangeAction(Action):
 
 
 class CounterAction(Action):
-    action_type = ActionType.counter
+    action_type: ActionType = ActionType.counter
     counter_type: CounterActionType
     associated_card_type: Optional[List[CardType]]
 
@@ -91,7 +91,7 @@ class CounterAction(Action):
         return f"{self.counter_type.value}"
 
 class NoCounterAction(Action):
-    action_type = ActionType.no_counter
+    action_type: ActionType = ActionType.no_counter
     counter_type: CounterActionType
     associated_card_type: Optional[List[CardType]]
 

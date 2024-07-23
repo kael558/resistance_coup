@@ -65,13 +65,13 @@ class HumanPlayer(BasePlayer):
 
         return target_action, target_player
 
-    def determine_challenge(self, player: BasePlayer) -> bool:
+    def determine_challenge(self, player: BasePlayer, action:Action) -> bool:
         """Choose whether to challenge the current player"""
 
         challenge = print_confirm(f"Do you wish to challenge {str(player)}?")
         return challenge
 
-    def determine_counter(self, player: BasePlayer) -> bool:
+    def determine_counter(self, player: BasePlayer, action:Action) -> bool:
         """Choose whether to counter the current player's action"""
 
         challenge = print_confirm(f"Do you wish to counter {str(player)}?")

@@ -64,16 +64,21 @@ def print_table(table: Table, justify: JustifyMethod = "center"):
     console.print(table, justify=justify)
 
 
-def print_panel(panel: Panel, justify: JustifyMethod = "center"):
+def print_panel(panel: Panel or str, justify: JustifyMethod = "center"):
     print_blank()
+
+    if isinstance(panel, str):
+        panel = Panel(panel)
 
     console.print(panel, justify=justify)
 
 
-def print_prompt(content: str) -> str:
+def print_prompt(content: str, empty_allowed=False) -> str:
     response = None
     while not response:
         response = Prompt.ask(content)
+        if empty_allowed:
+            break
     return response
 
 

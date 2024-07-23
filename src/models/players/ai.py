@@ -39,13 +39,13 @@ class AIPlayer(BasePlayer):
 
         return target_action, target_player
 
-    def determine_challenge(self, player: BasePlayer) -> bool:
+    def determine_challenge(self, player: BasePlayer, action:Action) -> bool:
         """Choose whether to challenge the current player"""
 
         # 20% chance of challenging
         return random.randint(0, 4) == 0
 
-    def determine_counter(self, player: BasePlayer) -> bool:
+    def determine_counter(self, player: BasePlayer, action:Action) -> bool:
         """Choose whether to counter the current player's action"""
 
         # 10% chance of countering

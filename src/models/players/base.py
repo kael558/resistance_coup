@@ -71,12 +71,12 @@ class BasePlayer(BaseModel, ABC):
         pass
 
     @abstractmethod
-    def determine_challenge(self, player: "BasePlayer") -> bool:
+    def determine_challenge(self, player: "BasePlayer", action: Action) -> bool:
         """Choose whether to challenge the current player"""
         pass
 
     @abstractmethod
-    def determine_counter(self, player: "BasePlayer") -> CounterAction:
+    def determine_counter(self, player: "BasePlayer", action: Action) -> CounterAction:
         """Choose whether to counter the current player's action"""
         pass
 

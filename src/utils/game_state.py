@@ -5,8 +5,46 @@ from rich.table import Column, Table
 from rich.text import Text
 
 from src.models.card import Card
+from src.models.players.agent import AgentPlayer
 from src.models.players.human import BasePlayer
 
+
+def generate_str_panel(conversation: str) -> Panel:
+    """Generate a panel showing the conversation"""
+    return Panel(
+        conversation,
+        title=":speech_balloon: Conversation",
+        width=50,
+    )
+
+def generate_player_panel(player: BasePlayer) -> Panel:
+    """Generate a panel showing the player's information"""
+    name = Text.from_markup(f":grimacing: {player.name}")
+    name.stylize("bold magenta")
+    personal_coins = Text(f"Coins: {player.coins}", style="gray")
+
+    if isinstance(player, AgentPlayer):
+        personality = Text("Personality: " + player.personality, style="gray")
+        inner_thoughts = Text("Inner Thoughts: " + player.inner_thoughts, style="gray")
+        cards = Text("Cards: " + ", ".join([str(card) for card in player.cards]), style="gray")
+
+        return Panel(
+            f"""
+{name}
+{personal_coins}
+{personality}
+{inner_thoughts}
+{cards}
+ """,
+            title=":robot: Agent Player",
+        )
+    else:
+        return Panel(
+            f"""
+{name}
+{personal_coins}
+            """
+        )
 
 def generate_state_panel(
     deck: list[Card], treasury_coins: int, current_player: BasePlayer

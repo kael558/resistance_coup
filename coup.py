@@ -45,8 +45,15 @@ def main():
     console.print(panel)
 
     console.print()
-    player_name = print_prompt("What is your name, player?")
-    handler = ResistanceCoupGameHandler(player_name, 5)
+    while True:
+        player_count = print_prompt("How many AI players should be added to the game? (1-5)")
+        player_count = int(player_count)
+        if 1 <= player_count <= 5:
+            break
+        print_text("Please enter a number between 1 and 5")
+
+    print_text(f"Adding {player_count} AI players to the game...")
+    handler = ResistanceCoupGameHandler(int(player_count))
 
     console.print()
     game_ready = print_confirm("Ready to start?")
@@ -66,6 +73,18 @@ def main():
             console.print()
             panel = Panel(Text(f"Turn {turn_count}", style="bold", justify="left"), expand=False)
             console.print(panel)
+
+            while True:
+                val = print_prompt(f"Enter to continue... or type a player index to see their state", empty_allowed=True)
+                if val.strip() != "":
+                    try:
+                        player_ind = int(val) - 1
+                        handler.print_player_state(player_ind)
+                    except ValueError:
+                        pass
+                else:
+                    break
+
 
             end_state = handler.handle_turn()
 

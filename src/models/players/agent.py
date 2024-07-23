@@ -6,9 +6,9 @@ from typing import List, Optional, Tuple
 from src.models.action import Action, ActionType, ChallengeAction, NoChallengeAction, CounterAction, NoCounterAction, RemoveCardAction
 from src.models.card import Card
 from src.models.players.base import BasePlayer
-from src.utils.print import print_text, print_texts
 
-import openai
+from src.utils.print import print_text, print_texts, print_panel
+from src.utils.api_interface import client
 
 
 class AgentPlayer(BasePlayer):
@@ -32,6 +32,9 @@ Your overall task is to decide the following:
 Here are the possible actions:
 {possible_actions_str}
 
+Here are YOUR cards:
+{[card.card_type.value for card in self.cards]}
+
 Here are the possible players that you can act on:
 {possible_players_str}
 
@@ -53,12 +56,12 @@ Inner thoughts:
 
 Adjusted & new inner thoughts:"""
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages
         )
 
-        new_inner_thoughts = response.choices[0].text.strip()
+        new_inner_thoughts = response.choices[0].message.content.strip()
         return new_inner_thoughts
 
     def make_decision(self, overall_task: str, possible_actions: List[Action], possible_players: List[BasePlayer], messages: List, decision_type: str):
@@ -132,20 +135,46 @@ Adjusted & new inner thoughts:"""
 
         task = f"""You have now thought about the current state of the game and your overall strategy.
 
-        You must now make a decision based on your thoughts. Output your decision according to the following format:
+        You must now make a decision based on your thoughts. Output your decision in key value pairs in json format.
+      
+For example:  
+[
+    {{
+        "name": "action",
+        "type": "string",
+        "required": True,
+        "enum": [action.action_type.value for action in possible_actions]
+    }},
+    {{
+        "name": "player",
+        "type": "string",
+        "required": False,
+        "enum": [player.name for player in possible_players]
+    }}
+]
+
+Could be output as:
+{{
+    "action": "Income",
+    "player": "Player 1"
+}}
+        
+Here is the JSON schema, please fill in the required fields:
 {required_json}"""
 
         system_msg = self._system_msg(overall_task, possible_actions, possible_players, task)
         messages.append({"role": "system", "content": system_msg})
 
         for i in range(3):
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model="gpt-3.5-turbo",
                 messages=messages,
                 response_format={"type": "json_object"}
             )
 
-            content = response.choices[0].text.strip()
+            content = response.choices[0].message.content
+
+            print_text(f"{decision_type}: Decision from {self.name}: {content}")
 
             try:
                 json_content = json.loads(content)
@@ -153,32 +182,53 @@ Adjusted & new inner thoughts:"""
                 messages.append({"role": "system", "content": f"""Could not parse the following json:
 {content}
 Please try again and provide the json in the correct format\n"""})
+                print_text(f"Could not parse the following json: {content}.")
                 continue
 
             feedback_str = ""
             for item in required_json:
-                if item["required"] and item["name"] not in json_content:
-                    feedback_str += f"Please try again and provide the {item['name']} in the correct format\n"
-                elif item["required"] and json_content[item["name"]] not in item["enum"]:
-                    feedback_str += f"Invalid {item['name']}. Please try again and choose from the possible options: {item['enum']}\n"
+                name = item["name"]
+                required = item["required"]
+                enum_values = item.get("enum", [])
+
+                if required and name not in json_content:
+                    feedback_str += f"Please try again and provide the key {name} with one of the following values: {enum_values}\n"
+                elif required and name in json_content:
+                    value = json_content[name]
+
+                    if (not value and value is not False) or value not in enum_values:
+                        # iterate through the enum values to see if there is a string match
+                        for enum_value in enum_values:
+                            if enum_value.lower() in value.lower():
+                                feedback_str += f"Did you mean {enum_value}? Please try again and provide a valid value from the possible options: {enum_values}\n"
+                                break
+                        else:
+                            feedback_str += f"You cannot perform {name}. Please choose a different value from the possible options: {enum_values}\n"
 
             if feedback_str:
+                print_text(f"Invalid decision {json_content} from {self.name}: {feedback_str}")
                 messages.append({"role": "system", "content": feedback_str})
                 continue
 
             if decision_type == "action":
                 action = next((a for a in possible_actions if a.action_type.value == json_content["action"]), None)
-                player = next((p for p in possible_players if p.name == json_content["player"]), None)
+                player = None
+                if action.requires_target:
+                    player = next((p for p in possible_players if p.name == json_content["player"]), None)
 
-                if action.action_type == ActionType.steal and player.coins == 0:
-                    messages.append({"role": "system", "content": "You can't steal from a player with 0 coins. Please try again"})
-                    continue
+                    if not player:
+                        messages.append({"role": "system", "content": f"Invalid player {json_content['player']}. Please try again and choose a valid player. One of the possible players is: {possible_players}"})
+                        continue
+
+                    if action.action_type == ActionType.steal and player.coins == 0:
+                        messages.append({"role": "system", "content": "You can't steal from a player with 0 coins. Please make a different choice."})
+                        continue
 
                 return action, player
             elif decision_type == "challenge":
-                return json_content["challenge"] == "True"
+                return json_content["challenge"]
             elif decision_type == "counter":
-                return json_content["counter"] == "True"
+                return json_content["counter"]
             elif decision_type == "remove_card":
                 card = next((c for c in self.cards if c.card_type.value == json_content["card_to_remove"]), None)
                 return card
@@ -193,19 +243,20 @@ Please try again and provide the json in the correct format\n"""})
     def add_new_thought_to_messages(self, overall_task: str, possible_actions: List[Action or Card], possible_players: List[BasePlayer]) -> List:
         task = """Think about the current state of the game and your overall strategy.
 
-Think step by step about how you can achieve this goal. Output your thoughts in a clear and concise manner."""
+Weigh the risks and benefits and think about what you think is the best course of action. Output your thoughts in a clear and concise manner."""
         system_msg = self._system_msg(overall_task, possible_actions, possible_players, task)
         messages = [
             {"role": "system", "content": system_msg}
         ]
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=messages
         )
-        new_thought = response.choices[0].text.strip()
+        new_thought = response.choices[0].message.content.strip()
 
-        self.inner_thoughts = self._alter_thoughts(new_thought)
+        #self.inner_thoughts = self._alter_thoughts(new_thought)
+        print_panel(f"{self.name} is thinking the following: {new_thought}")
 
         messages.append({"role": "assistant", "content": new_thought})
 
@@ -226,7 +277,7 @@ Think step by step about how you can achieve this goal. Output your thoughts in 
             if decision is not None:
                 return decision
         else:
-            overall_task = "Choose an action to perform"
+            overall_task = "Choose an action to perform. Remember "
             messages = self.add_new_thought_to_messages(overall_task, available_actions, other_players)
             decision = self.make_decision(overall_task, available_actions, other_players, messages, "action")
             if decision is not None:
@@ -271,7 +322,7 @@ Here are your inner thoughts:
 
 What is your reaction & thoughts on this event and what might you say to influence the other players?"""
 
-        event_thoughts = openai.ChatCompletion.create(
+        event_thoughts = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_msg}
@@ -280,7 +331,7 @@ What is your reaction & thoughts on this event and what might you say to influen
 
         return event_thoughts.choices[0].message.content
 
-    def adjust_internal_thoughts(self, event: str, is_current_player:bool, conversation: str) -> None:
+    def adjust_internal_thoughts(self, event: str, is_current_player: bool, conversation: str) -> None:
         """
         Adjust internal thoughts based on the event and conversation that just happened
         """
@@ -299,7 +350,7 @@ Here are your current inner thoughts:
 
 Adjust your inner thoughts based on the event and conversation. Output your thoughts in a clear and concise manner."""
 
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": system_msg}
@@ -308,21 +359,23 @@ Adjust your inner thoughts based on the event and conversation. Output your thou
 
         self.inner_thoughts = response.choices[0].message.content
 
-
-    def determine_challenge(self, player: BasePlayer) -> bool:
+    def determine_challenge(self, player: BasePlayer, action: Action) -> bool:
         """Choose whether to challenge the current player"""
-        messages = self.add_new_thought_to_messages("Do you want to challenge the current player on their move?", [ChallengeAction(), NoChallengeAction()], [player])
-        challenge = self.make_decision("Do you want to challenge the current player on their move?", [ChallengeAction(), NoChallengeAction()], [player], messages, "challenge")
+        task = f"Do you want to challenge {str(player)} on their attempt to {action.action_type.value}? Keep in mind you also have the option to counter."
+        messages = self.add_new_thought_to_messages(task, [ChallengeAction(), NoChallengeAction()], [player])
+        challenge = self.make_decision(task, [ChallengeAction(), NoChallengeAction()], [player], messages, "challenge")
+
         if challenge is not None:
             return challenge
 
         return random.randint(0, 4) == 0
 
-    def determine_counter(self, player: BasePlayer) -> bool:
+    def determine_counter(self, player: BasePlayer, action: Action) -> bool:
         """Choose whether to counter the current player's action"""
+        task = f"Do you want to counter {str(player)} on their attempt to {action.action_type.value}?"
 
-        messages = self.add_new_thought_to_messages("Do you want to counter the current player's move?", [CounterAction(), NoCounterAction()], [player])
-        counter = self.make_decision("Do you want to counter the current player's move?", [CounterAction(), NoCounterAction()], [player], messages, "counter")
+        messages = self.add_new_thought_to_messages(task, [CounterAction(), NoCounterAction()], [player])
+        counter = self.make_decision(task, [CounterAction(), NoCounterAction()], [player], messages, "counter")
         if counter is not None:
             return counter
 
