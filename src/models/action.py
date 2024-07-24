@@ -82,7 +82,7 @@ class ExchangeAction(Action):
     can_be_challenged: bool = True
 
 
-class CounterAction(Action):
+class CounterAction(BaseModel):
     action_type: ActionType = ActionType.counter
     counter_type: CounterActionType
     associated_card_type: Optional[List[CardType]]
@@ -90,7 +90,7 @@ class CounterAction(Action):
     def __str__(self):
         return f"{self.counter_type.value}"
 
-class NoCounterAction(Action):
+class NoCounterAction(BaseModel):
     action_type: ActionType = ActionType.no_counter
     counter_type: CounterActionType
     associated_card_type: Optional[List[CardType]]

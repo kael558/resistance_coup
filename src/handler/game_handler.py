@@ -11,7 +11,7 @@ from src.models.players.base import BasePlayer
 from src.models.players.human import HumanPlayer
 from src.models.players.agent import AgentPlayer
 from src.utils.game_state import generate_players_table, generate_state_panel, generate_player_panel, generate_str_panel
-from src.utils.helpers import generate_personality
+
 from src.utils.print import (
     build_action_report_string,
     build_counter_report_string,
@@ -23,6 +23,13 @@ from src.utils.print import (
 )
 
 from src.utils.api_interface import client
+from aiohttp import ClientSession
+import os
+import asyncio
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 class ChallengeResult(Enum):
@@ -42,20 +49,51 @@ class ResistanceCoupGameHandler:
 
         self.turn_count = None
         self._number_of_players = number_of_players
+        asyncio.run(self.initialize_players())
+
+    async def initialize_players(self):
         unique_names = set()
-        for i in range(number_of_players):
-            gender = random.choice(["male", "female"])
+        tasks = []
 
-            ai_name = names.get_first_name(gender=gender)
-            while ai_name in unique_names:
+        async with ClientSession() as session:
+            for i in range(self._number_of_players):
+                gender = random.choice(["male", "female"])
+
                 ai_name = names.get_first_name(gender=gender)
+                while ai_name in unique_names:
+                    ai_name = names.get_first_name(gender=gender)
 
-            unique_names.add(ai_name)
+                unique_names.add(ai_name)
+                task = asyncio.create_task(self.generate_personality(session, ai_name, gender, i))
+                tasks.append(task)
 
-            personality = generate_personality(ai_name, gender)
-            print_text(f"Initialized Player {i + 1}/{number_of_players}: {ai_name}")
+            await asyncio.gather(*tasks)
 
-            self._players.append(AgentPlayer(name=ai_name, personality=personality))
+    async def generate_personality(self, session: ClientSession, name: str, gender: str, player_index: int):
+        system_msg = f"""Generate a personality for a {gender} named {name}. 
+    They are playing the board game Coup, so you can include elements that will make them interesting players. 
+    You can be creative with personalities, ranging from a calm, strategic to a loud, aggressive player.
+    You may even include various emotional tendencies...
+    Just generate the personality. Don't say anything else like 'Sure, here is a personality'."""
+
+        api_key = os.environ.get("OPENAI_API_KEY")
+
+        async with session.post(
+                "https://api.openai.com/v1/chat/completions",
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "model": "gpt-4",
+                    "messages": [{"role": "system", "content": system_msg}],
+                    "temperature": 1.0,
+                },
+        ) as response:
+            result = await response.json()
+            personality = result["choices"][0]["message"]["content"]
+            print_text(f"Initialized Player {player_index + 1}: {name}")
+            self._players.append(AgentPlayer(name=name, personality=personality))
 
     @property
     def current_player(self) -> BasePlayer:
@@ -190,7 +228,7 @@ class ResistanceCoupGameHandler:
     ) -> ChallengeResult:
         # Every player can choose to challenge
         for challenger in other_players:
-            should_challenge = challenger.determine_challenge(player_being_challenged, action_being_challenged, turn_count=self.turn_count)
+            should_challenge = challenger.determine_challenge(player_being_challenged, action_being_challenged)
             if should_challenge:
                 if challenger.is_ai:
                     print_text(f"{challenger} is challenging {player_being_challenged}!")
@@ -198,7 +236,6 @@ class ResistanceCoupGameHandler:
                 if card := player_being_challenged.find_card(
                         action_being_challenged.associated_card_type
                 ):
-
 
                     self._challenge_against_player_failed(
                         player_being_challenged=player_being_challenged,
@@ -287,7 +324,7 @@ class ResistanceCoupGameHandler:
                 self._deck.append(second_card)
 
     def _generate_conversation(self, evt: str, player_thoughts: list[str]):
-        #print_text(f"Event just happened: {evt}")
+        print_text(f"Generating conversation for turn {self.turn_count}...")
 
         player_specs = [f"""---{player.name}--- 
 Personality: {player.personality}

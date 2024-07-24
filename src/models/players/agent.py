@@ -17,7 +17,7 @@ class AgentPlayer(BasePlayer):
     inner_thoughts: str = ""
 
 
-    def _system_msg(self, overall_task: str, possible_actions: List[Action], possible_players: List[BasePlayer], task: str) -> str:
+    def _system_msg(self, overall_task: str, possible_actions: List, possible_players: List[BasePlayer], task: str) -> str:
         possible_actions_str = [str(action.action_type.value) for action in possible_actions]
         possible_players_str = [(str(player.name) + " has " + str(len(player.cards)) + " cards.") for player in possible_players]
 
@@ -52,6 +52,8 @@ Your task is to decide the following:
 
 Adjust and add your new thought to your inner thoughts. Output your thoughts in a clear and concise manner.
 
+Try to keep track of what cards others likely have based on their actions.
+
 Inner thoughts:
 {self.inner_thoughts}
 
@@ -65,7 +67,7 @@ Adjusted & new inner thoughts:"""
         new_inner_thoughts = response.choices[0].message.content.strip()
         return new_inner_thoughts
 
-    def make_decision(self, overall_task: str, possible_actions: List[Action], possible_players: List[BasePlayer], messages: List, decision_type: str):
+    def make_decision(self, overall_task: str, possible_actions: List, possible_players: List[BasePlayer], messages: List, decision_type: str):
         """
         Options:
         1. Separator + parsing actions
@@ -241,7 +243,7 @@ Please try again and provide the json in the correct format\n"""})
                 # Fail case, just do a random action
         return None
 
-    def add_new_thought_to_messages(self, overall_task: str, possible_actions: List[Action or Card], possible_players: List[BasePlayer]) -> List:
+    def add_new_thought_to_messages(self, overall_task: str, possible_actions: List[Action or Card or CounterAction], possible_players: List[BasePlayer]) -> List:
         task = """Think about the current state of the game and your overall strategy.
 
 Weigh the risks and benefits and think about what you think is the best course of action. Output your thoughts in a clear and concise manner."""
@@ -278,7 +280,7 @@ Weigh the risks and benefits and think about what you think is the best course o
             if decision is not None:
                 return decision
         else:
-            overall_task = "Choose an action to perform. Remember "
+            overall_task = "Choose an action to perform. Feel free to bluff if you feel you can get away with it... Even better if you make others think you have a card that you don't have."
             messages = self.add_new_thought_to_messages(overall_task, available_actions, other_players)
             decision = self.make_decision(overall_task, available_actions, other_players, messages, "action")
             if decision is not None:
