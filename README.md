@@ -102,21 +102,14 @@ pre-commit install
 5. Open a Pull Request
 
 
-### Features I want
+### Features added
 
 Agent features:
-1. Faulty human memory (importance of memory relies on emotional impact from turn) -> Agentic memory, recency, importance & relevance
-2. Bluffing patterns (rather than random) -> Personality
-3. Reasoning about everything -> Chain of thought 
-4. Inner thoughts and strategy (emotional state + overall strategy) -> Derived from chain of thought (updates this)
-5. Reacting to decisions -> updates emotional state + overall strategy
-6. Responses can be in a script format from each player
-7. Interrupt an action ;o
-
-Game loop logic:
-1. Giving agents the ability to think & speak before every turn/challenge etc.. (obviously they shouldnt speak too much)
-
-
+1. Agent personality
+2. Conversations are in a script format allowing agents to influence other agents based on inner thoughts
+3. Reasoning (with chain of thought) about actions based on game state/inner thoughts
+4. Inner thoughts and strategy (emotional state + overall strategy) -> Derived from chain of thought
+5. Reacting to every decision another player makes -> updates emotional state + overall strategy
 
 ## License
 
