@@ -49,7 +49,12 @@ git clone https://github.com/dirkbrnd/resistance_coup.git
 poetry install
 ```
 
-3. Add your OPENAI_API_KEY to .env
+3. Pip install python-dotenv (not sure why the poetry dotenv plugin wasn't working)
+```
+pip install python-dotenv
+```
+
+3. Create a .env and add your OPENAI_API_KEY to .env
 ```
 OPENAI_API_KEY=<key>
 ```
