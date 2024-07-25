@@ -49,7 +49,12 @@ git clone https://github.com/dirkbrnd/resistance_coup.git
 poetry install
 ```
 
-3. Launch!
+3. Add your OPENAI_API_KEY to .env
+```
+OPENAI_API_KEY=<key>
+```
+
+4. Launch!
 
 ```sh
 python coup.py
