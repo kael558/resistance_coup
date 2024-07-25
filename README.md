@@ -40,7 +40,7 @@ The main package to mention here is [Rich](https://github.com/Textualize/rich). 
 1. Clone the repo
 
 ```sh
-git clone https://github.com/dirkbrnd/resistance_coup.git
+git clone https://github.com/kael558/resistance_coup.git
 ```
 
 2. Install the game
